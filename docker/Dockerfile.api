@@ -1,10 +1,8 @@
 FROM php:8.2-fpm-alpine
 
-# Install PHP extensions
-RUN docker-php-ext-install pdo pdo_mysql mbstring
-
-# Install Nginx
-RUN apk add --no-cache nginx
+# Install system dependencies and PHP extensions
+RUN apk add --no-cache nginx oniguruma-dev \
+    && docker-php-ext-install pdo pdo_mysql mbstring
 
 # Copy API source
 COPY api/ /var/www/html/api/
@@ -20,4 +18,4 @@ RUN mkdir -p /var/www/storage/bills /var/www/storage/logs \
 EXPOSE 8080
 
 # Start PHP-FPM and Nginx
-CMD php-fpm -D && nginx -g "daemon off;"
+CMD ["sh", "-c", "php-fpm -D && nginx -g 'daemon off;'"]

@@ -1,0 +1,23 @@
+FROM php:8.2-fpm-alpine
+
+# Install PHP extensions
+RUN docker-php-ext-install pdo pdo_mysql mbstring
+
+# Install Nginx
+RUN apk add --no-cache nginx
+
+# Copy API source
+COPY api/ /var/www/html/api/
+
+# Copy Nginx config
+COPY docker/nginx/api.conf /etc/nginx/http.d/default.conf
+
+# Set permissions
+RUN chown -R www-data:www-data /var/www/html/api
+RUN mkdir -p /var/www/storage/bills /var/www/storage/logs \
+    && chown -R www-data:www-data /var/www/storage
+
+EXPOSE 8080
+
+# Start PHP-FPM and Nginx
+CMD php-fpm -D && nginx -g "daemon off;"

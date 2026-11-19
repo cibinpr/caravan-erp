@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Environment
+.env
+*.env.local
+
+# Build
+frontend/dist/
+frontend/node_modules/
+
+# Storage
+storage/bills/*
+storage/logs/*
+!storage/bills/.gitkeep
+!storage/logs/.gitkeep
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml

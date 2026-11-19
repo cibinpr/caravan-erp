@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    container_name: caravan-erp-api
+    environment:
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=caravan_erp
+      - DB_USERNAME=caravan_user
+      - DB_PASSWORD=caravan_secret
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - bill-storage:/var/www/storage/bills
+    networks:
+      - caravan-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    container_name: caravan-erp-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    networks:
+      - caravan-network
+
+  db:
+    image: mysql:8.0
+    container_name: caravan-erp-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root_secret
+      MYSQL_DATABASE: caravan_erp
+      MYSQL_USER: caravan_user
+      MYSQL_PASSWORD: caravan_secret
+    volumes:
+      - db-data:/var/lib/mysql
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./sql/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - caravan-network
+
+volumes:
+  db-data:
+  bill-storage:
+
+networks:
+  caravan-network:
+    driver: bridge

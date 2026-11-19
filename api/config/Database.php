@@ -1,0 +1,66 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Config;
+
+use PDO;
+use PDOException;
+use RuntimeException;
+
+/**
+ * Database Singleton using PDO Prepared Statements (NFR-SEC-2)
+ */
+class Database
+{
+    private static ?PDO $instance = null;
+
+    public static function getConnection(): PDO
+    {
+        if (self::$instance === null) {
+            Config::load();
+
+            $host = Config::get('DB_HOST', '127.0.0.1');
+            $port = Config::get('DB_PORT', '3306');
+            $dbname = Config::get('DB_DATABASE') ?: Config::get('DB_NAME', 'caravan_accounting');
+            $user = Config::get('DB_USERNAME') ?: Config::get('DB_USER', 'root');
+            $pass = Config::get('DB_PASSWORD') ?? Config::get('DB_PASS', '');
+
+            $dsn = "mysql:host={$host};port={$port};dbname={$dbname};charset=utf8mb4";
+
+            $options = [
+                PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES   => false, // Enforce native prepared statements
+                PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
+            ];
+
+            try {
+                self::$instance = new PDO($dsn, $user, $pass, $options);
+            } catch (PDOException $e) {
+                // Never leak database credentials or raw connection errors to client
+                error_log("Database connection error: " . $e->getMessage());
+                throw new RuntimeException("Database service unavailable.");
+            }
+        }
+
+        return self::$instance;
+    }
+
+    /**
+     * Helper to run queries inside a database transaction (SRS Section 6.3)
+     */
+    public static function transaction(callable $callback): mixed
+    {
+        $pdo = self::getConnection();
+        $pdo->beginTransaction();
+        try {
+            $result = $callback($pdo);
+            $pdo->commit();
+            return $result;
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+    }
+}
